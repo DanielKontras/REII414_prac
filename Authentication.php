@@ -8,25 +8,33 @@
     $username = mysqli_real_escape_string($con, $username);  
     $password = mysqli_real_escape_string($con, $password);  
 
-    // Query to check if the username and password exist in the database
-    $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";  
-    $result = mysqli_query($con, $sql);  
+    // Start a session to store error messages
+    session_start();
 
-    // Check the number of rows returned by the query
-    if(mysqli_num_rows($result) == 1){  
-        // Authentication successful
-        // Start a session and store the username in the session variable
-        session_start();
-        $_SESSION['username'] = $username;
+    // Query to check if the username exists in the database
+    $user_check_query = "SELECT * FROM users WHERE username = '$username'";  
+    $user_check_result = mysqli_query($con, $user_check_query);
 
-        // Redirect the user to another page (e.g., dashboard.php)
-        header("Location: Home.php");
-        exit(); // Make sure to exit after redirection to prevent further script execution
-    }  
-    else{  
-        // Authentication failed
-        // Redirect back to the login page with an error message as a query parameter
-        header("Location: index.php?login_error=1");
+    if(mysqli_num_rows($user_check_result) > 0){  
+        // Username exists, now check the password
+        $sql = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";  
+        $result = mysqli_query($con, $sql);  
+
+        if(mysqli_num_rows($result) == 1){  
+            // Authentication successful
+            $_SESSION['username'] = $username;
+            header("Location: home.php");
+            exit();
+        } else {  
+            // Incorrect password
+            $_SESSION['error'] = "Incorrect password.";
+            header("Location: index.php");
+            exit();
+        }
+    } else {  
+        // Username does not exist
+        $_SESSION['error'] = "User does not exist.";
+        header("Location: index.php");
         exit();
     }     
 ?>

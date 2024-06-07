@@ -23,7 +23,7 @@ $username = $_SESSION['username'];
 </head>
 <body>
     <header>
-        <h1>Welcome to Our Online Store, <?php echo $username; ?>!</h1>
+        <h1>Welcome to Our Online Store, <?php echo htmlspecialchars($username); ?>!</h1>
         <nav>
             <ul>
                 <li><a href="home.php">Home</a></li>
