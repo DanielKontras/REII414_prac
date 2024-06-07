@@ -1,5 +1,5 @@
 <h1>Hello World PHP</h1>
-
+// fr
 <?php
 function fooFunc(&$a)
 {
