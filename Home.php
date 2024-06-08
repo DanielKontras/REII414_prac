@@ -29,6 +29,7 @@ $username = $_SESSION['username'];
                 <li><a href="home.php">Home</a></li>
                 <li><a href="products.php">Products</a></li>
                 <li><a href="cart.php">Cart</a></li> <!-- Link to Cart page -->
+                <li><a href="wallet.php">Wallet</a></li>
                 <li><a href="contact.php">Contact Us</a></li>
                 <li><a href="index.php">Logout</a></li> <!-- Logout link -->
             </ul>

@@ -19,8 +19,8 @@ try {
     // Set the PDO error mode to exception
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Fetch product details including the image path
-    $stmt = $conn->prepare("SELECT product_name, product_price, vendor_name, image_path FROM products");
+    // Fetch product details including the image path and stock quantity
+    $stmt = $conn->prepare("SELECT product_name, product_price, vendor_name, image_path, stock_quantity FROM products");
     $stmt->execute();
 
     // Set the resulting array to associative
@@ -61,6 +61,7 @@ try {
                     <img src="<?php echo $product['image_path']; ?>" alt="Image of <?php echo $product['product_name']; ?>" style="width:100px; height:auto;">
                     <p>Price: R<?php echo $product['product_price']; ?></p>
                     <p>Vendor: <?php echo $product['vendor_name']; ?></p>
+                    <p>Stock: <?php echo $product['stock_quantity']; ?></p>
                     <button>Add to Cart</button>
                 </div>
             <?php endforeach; ?>

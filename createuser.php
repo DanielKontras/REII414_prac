@@ -21,12 +21,20 @@ session_start();
         ?>
         <form name="createForm" action="createuser_action.php" onsubmit="return validateCreateForm()" method="POST">
             <div class="form-group">
-                <label for="newuser">UserName:</label>
+                <label for="newuser">Username:</label>
                 <input type="text" id="newuser" name="newuser" />
             </div>
             <div class="form-group">
                 <label for="newpass">Password:</label>
                 <input type="password" id="newpass" name="newpass" />
+            </div>
+            <div class="form-group">
+                <label for="role">Role:</label>
+                <select id="role" name="role">
+                    <option value="customer">Customer</option>
+                    <option value="vendor">Vendor</option>
+                    <option value="administrator">Administrator</option>
+                </select>
             </div>
             <div class="form-group">
                 <input type="submit" id="btn" value="Create Account" />
@@ -38,11 +46,11 @@ session_start();
             var user = document.createForm.newuser.value;
             var pass = document.createForm.newpass.value;
             if (user.length == "" && pass.length == "") {
-                alert("User Name and Password fields are empty");
+                alert("Username and Password fields are empty");
                 return false;
             } else {
                 if (user.length == "") {
-                    alert("User Name is empty");
+                    alert("Username is empty");
                     return false;
                 }
                 if (pass.length == "") {

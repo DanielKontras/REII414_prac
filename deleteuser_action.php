@@ -1,11 +1,6 @@
 <?php
 session_start();
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $servername = "localhost";
     $dbname = "takealittle";  // Replace with your actual database name
@@ -17,27 +12,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Set the PDO error mode to exception
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Check if the username and password match
-        $stmt = $conn->prepare("SELECT * FROM users WHERE username = :username AND password = :password");
+        // Get the user_num of the user to be deleted
+        $stmt = $conn->prepare("SELECT user_num FROM users WHERE username = :username");
         $stmt->bindParam(':username', $username);
-        $stmt->bindParam(':password', $password);
-
         $username = $_POST['username'];
-        $password = $_POST['password'];
         $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($stmt->rowCount() > 0) {
-            // Delete the user
-            $stmt = $conn->prepare("DELETE FROM users WHERE username = :username AND password = :password");
+        if ($result) {
+            $user_num = $result['user_num'];
+
+            // Delete the corresponding wallet entry from the wallets table
+            $stmt = $conn->prepare("DELETE FROM wallets WHERE user_num = :user_num");
+            $stmt->bindParam(':user_num', $user_num);
+            $stmt->execute();
+
+            // Delete the user from the users table
+            $stmt = $conn->prepare("DELETE FROM users WHERE username = :username");
             $stmt->bindParam(':username', $username);
-            $stmt->bindParam(':password', $password);
             $stmt->execute();
 
             $_SESSION['message'] = "Your account has been deleted successfully. <a href='index.php'>Return to login page</a>";
             header("Location: deleteuser.php");
             exit();
         } else {
-            $_SESSION['message'] = "Invalid username or password.";
+            $_SESSION['message'] = "Invalid username.";
             header("Location: deleteuser.php");
             exit();
         }

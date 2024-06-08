@@ -23,13 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             header("Location: createuser.php");
             exit();
         } else {
-            // Prepare and bind
-            $stmt = $conn->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
+            // Prepare and bind for users table
+            $stmt = $conn->prepare("INSERT INTO users (username, password, role) VALUES (:username, :password, :role)");
             $stmt->bindParam(':username', $newuser);
-            $stmt->bindParam(':password', $newpass);
+            $stmt->bindParam(':password', $hashed_password);
+            $stmt->bindParam(':role', $role);
 
-            // Set parameters and execute
+            // Set parameters for users table
             $newpass = $_POST['newpass'];
+            $hashed_password = $newpass; // Directly taking the password without hashing
+            $role = $_POST['role']; // Adding role parameter
+            $stmt->execute();
+
+            // Get the user_num of the inserted user
+            $user_num = $conn->lastInsertId();
+
+            // Prepare and bind for wallets table
+            $stmt = $conn->prepare("INSERT INTO wallets (user_num, balance) VALUES (:user_num, 0)");
+            $stmt->bindParam(':user_num', $user_num);
             $stmt->execute();
 
             $_SESSION['message'] = "New account created successfully. <a href='index.php'>Return to login page</a>";
