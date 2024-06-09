@@ -96,6 +96,86 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - Online Store</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f06, #f90);
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        header, main {
+            width: 80%;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            margin: 0;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        nav ul li {
+            display: inline;
+            margin: 0 10px;
+        }
+        nav ul li a {
+            text-decoration: none;
+            color: #000;
+            font-weight: bold;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        nav ul li a:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        .cart-container {
+            float: right;
+            margin-right: 20px;
+            text-align: left;
+        }
+        .total-price {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .message {
+            color: red;
+            font-weight: bold;
+        }
+        main p {
+            font-size: 18px;
+            color: #000;
+        }
+
+                /* Adjust button styling */
+                button {
+            margin-top: 5px; /* Add space between buttons */
+            background-color: #0000FF; /* Green */
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        button:hover {
+            background-color: #37CEEB; /* Darker green */
+        }
+
+        
+    </style>
 </head>
 <body>
     <header>
@@ -105,6 +185,7 @@ try {
                 <li><a href="home.php">Home</a></li>
                 <li><a href="products.php">Products</a></li>
                 <li><a href="wallet.php">Wallet</a></li>
+                <li><a href="orderhistory.php">Order History</a></li>
                 <li><a href="contact.php">Contact Us</a></li>
                 <li><a href="index.php">Logout</a></li>
             </ul>
@@ -118,7 +199,7 @@ try {
         <h3>Your Available Balance: R<?php echo $balance; ?></h3>
         <p style="color: blue;">If you purchase more than R500 worth of products, shipping will be free !!!</p>
         <?php if ($message): ?>
-            <p style="color: <?php echo strpos($message, 'Payment successful') !== false ? 'green' : 'red'; ?>;"><?php echo $message; ?></p>
+            <p class="message" style="color: <?php echo strpos($message, 'Payment successful') !== false ? 'green' : 'red'; ?>;"><?php echo $message; ?></p>
         <?php endif; ?>
         <form method="post" action="checkout.php">
             <button type="submit" name="pay">Pay Amount</button>
@@ -127,3 +208,4 @@ try {
     </main>
 </body>
 </html>
+

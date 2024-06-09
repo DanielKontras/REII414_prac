@@ -17,25 +17,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Set the PDO error mode to exception
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Get the user_num of the user to be deleted
-        $stmt = $conn->prepare("SELECT user_num FROM users WHERE username = :username");
+        // Get the username of the user to be deleted
+        $stmt = $conn->prepare("SELECT username FROM users WHERE username = :username");
         $stmt->bindParam(':username', $username);
         $username = $_POST['username'];
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
-            $user_num = $result['user_num'];
+            // Check if the user is a vendor
+            $stmt = $conn->prepare("SELECT * FROM vendor WHERE vendor_name = :username");
+            $stmt->bindParam(':username', $username);
+            $stmt->execute();
+            $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // If the user is a vendor, delete their products from the products table
+            if ($vendor) {
+                $stmt = $conn->prepare("DELETE FROM products WHERE vendor_name = :username");
+                $stmt->bindParam(':username', $username);
+                $stmt->execute();
+            }
 
             // Delete the user from the users table
             $stmt = $conn->prepare("DELETE FROM users WHERE username = :username");
             $stmt->bindParam(':username', $username);
             $stmt->execute();
 
-            // Delete the corresponding wallet entry from the wallets table
-            $stmt = $conn->prepare("DELETE FROM wallets WHERE user_num = :user_num");
-            $stmt->bindParam(':user_num', $user_num);
-            $stmt->execute();
+            // Delete the user from the vendors table if they are a vendor
+            if ($vendor) {
+                $stmt = $conn->prepare("DELETE FROM vendor WHERE vendor_name = :username");
+                $stmt->bindParam(':username', $username);
+                $stmt->execute();
+            }
 
             $_SESSION['message'] = "Your account has been deleted successfully. <a href='index.php'>Return to login page</a>";
             $_SESSION['message_type'] = "success";
@@ -56,6 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $conn = null;
 } 
+?>
+
+
 ?>
 
 <!DOCTYPE html>

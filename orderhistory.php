@@ -40,7 +40,67 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order History - Online Store</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f06, #f90);
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        header, main {
+            width: 80%;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            margin: 0;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        nav ul li {
+            display: inline;
+            margin: 0 10px;
+        }
+        nav ul li a {
+            text-decoration: none;
+            color: #000;
+            font-weight: bold;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        nav ul li a:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        main h2 {
+            margin-bottom: 10px;
+        }
+        main p, main ul {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+        main ul {
+            padding-left: 20px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -62,9 +122,11 @@ try {
         <?php else: ?>
             <?php foreach ($orders as $order): ?>
                 <h2>Order #<?php echo $order['order_id']; ?> - <?php echo $order['order_date']; ?></h2>
-                <p>Total Price: R<?php echo $order['total_price']; ?></p>
-                <p>Shipping Fee: R<?php echo $order['shipping_fee']; ?></p>
-                <p>Total with Shipping: R<?php echo $order['total_price'] + $order['shipping_fee']; ?></p>
+                <div>
+                    <p>Total Price: R<?php echo $order['total_price']; ?></p>
+                    <p>Shipping Fee: R<?php echo $order['shipping_fee']; ?></p>
+                    <p>Total with Shipping: R<?php echo $order['total_price'] + $order['shipping_fee']; ?></p>
+                </div>
                 <h3>Items:</h3>
                 <ul>
                     <?php

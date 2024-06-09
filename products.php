@@ -70,6 +70,14 @@ function updateTotalPrice() {
     $_SESSION['total_price'] = $total_price;
 }
 
+// Function to delete a product
+function deleteProduct($product_index) {
+    global $conn;
+    $stmt = $conn->prepare("DELETE FROM products WHERE product_number = ?");
+    $stmt->execute([$product_index]);
+    // You may also want to remove the product from any other related tables
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['action']) && $_POST['action'] == 'add_to_cart') {
         addToCart($_POST['product_index'], $_POST['product_stock']);
@@ -113,43 +121,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->execute();
             $message = "Vendor added successfully!";
         }
-    } elseif (isset($_POST['remove_vendor']) && $role === 'administrator') {
-        $vendor_name = $_POST['vendor_name'];
-        $vendor_number = intval($_POST['vendor_number']);
-
-        // Check if vendor exists
-        $stmt = $conn->prepare("SELECT * FROM vendor WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
-        $stmt->bindParam(':vendor_name', $vendor_name);
-        $stmt->bindParam(':vendor_number', $vendor_number);
-        $stmt->execute();
-        $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($vendor) {
-            // Check if the vendor has any products
-            $stmt = $conn->prepare("SELECT COUNT(*) FROM products WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
-            $stmt->bindParam(':vendor_name', $vendor_name);
-            $stmt->bindParam(':vendor_number', $vendor_number);
-            $stmt->execute();
-            $product_count = $stmt->fetchColumn();
-
-            if ($product_count == 0) {
-                $stmt = $conn->prepare("DELETE FROM vendor WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
-                $stmt->bindParam(':vendor_name', $vendor_name);
-                $stmt->bindParam(':vendor_number', $vendor_number);
-                $stmt->execute();
-                $message = "Vendor removed successfully!";
-            } else {
-                $message = "Vendor cannot be removed because they have products listed.";
-            }
-        } else {
-            $message = "Vendor does not exist.";
-        }
+    } elseif (isset($_POST['remove_product']) && $role === 'administrator') {
+        $product_index = intval($_POST['product_index']);
+        deleteProduct($product_index);
+        header("Location: products.php");
+        exit();
     }
 }
 
 updateTotalPrice();
-
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -159,9 +142,73 @@ updateTotalPrice();
     <title>Products - Online Store</title>
     <link rel="stylesheet" type="text/css" href="style.css">
     <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f06, #f90);
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        header, main {
+            width: 80%;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            margin: 0;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        nav ul li {
+            display: inline;
+            margin: 0 10px;
+        }
+        nav ul li a {
+            text-decoration: none;
+            color: #000;
+            font-weight: bold;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        nav ul li a:hover {
+            background-color: #fff;
+            color: #000;
+        }
+        .products-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .product {
+            border: 1px solid #ddd;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .product img {
+            max-width: 100px;
+            max-height: 100px;
+            margin-bottom: 10px;
+        }
         .cart-container {
             float: right;
             margin-right: 20px;
+            text-align: left;
         }
         .total-price {
             font-weight: bold;
@@ -170,6 +217,25 @@ updateTotalPrice();
         .message {
             color: red;
             font-weight: bold;
+        }
+        main p {
+            font-size: 18px;
+            color: #000;
+        }
+        /* Adjust button styling */
+        button {
+            margin-top: 5px; /* Add space between buttons */
+            background-color: #0000FF; /* Green */
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        button:hover {
+            background-color: #37CEEB; /* Darker green */
         }
     </style>
 </head>
@@ -219,36 +285,42 @@ updateTotalPrice();
                 <p>Your cart is empty.</p>
             <?php endif; ?>
         </div>
-        <div>
-            <?php foreach ($products as $product): ?>
-                <div>
-                    <h3><?php echo $product['product_name']; ?></h3>
-                    <img src="<?php echo $product['image_path']; ?>" alt="Product Image" style="max-width: 100px; max-height: 100px;">
-                    <p>Price: R<?php echo $product['product_price']; ?></p>
-                    <p>In stock: <?php echo $product['stock_quantity']; ?></p>
-                    <?php if ($role === 'vendor' && $product['vendor_name'] === $username): ?>
-                        <form action="products.php" method="post">
-                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                            <input type="number" name="new_stock" value="<?php echo $product['stock_quantity']; ?>" min="0">
-                            <button type="submit" name="update_stock">Update Stock</button>
-                        </form>
-                    <?php endif; ?>
-                    <?php if ($role === 'administrator'): ?>
-                        <form action="products.php" method="post">
-                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                            <input type="number" name="new_price" placeholder="New Price" step="0.01" min="0">
-                            <button type="submit" name="update_price">Update Price</button>
-                        </form>
-                    <?php endif; ?>
-                    <form action="products.php" method="post">
-                        <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                        <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>">
-                        <button type="submit" name="add_to_cart">Add to Cart</button>
-                        <input type="hidden" name="action" value="add_to_cart">
-                    </form>
-                </div>
-            <?php endforeach; ?>
+        <div class="products-container">
+    <?php foreach ($products as $product): ?>
+        <div class="product">
+            <h3><?php echo $product['product_name']; ?></h3>
+            <img src="<?php echo $product['image_path']; ?>" alt="Product Image">
+            <p>Price: R<?php echo $product['product_price']; ?></p>
+            <p>In stock: <?php echo $product['stock_quantity']; ?></p>
+            <?php if ($role === 'vendor' && $product['vendor_name'] === $username): ?>
+                <form action="products.php" method="post">
+                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                    <input type="number" name="new_stock" value="<?php echo $product['stock_quantity']; ?>" min="0">
+                    <button type="submit" name="update_stock">Update Stock</button>
+                </form>
+            <?php endif; ?>
+            <?php if ($role === 'administrator'): ?>
+                <form action="products.php" method="post">
+                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                    <input type="number" name="new_price" 
+                    placeholder="New Price" step="0.01" min="0">
+                    <button type="submit" name="update_price">Update Price</button>
+                </form>
+                <!-- Form for deleting a product -->
+                <form action="products.php" method="post">
+                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                    <button type="submit" name="remove_product" style="background-color: #f44336; color: white; padding: 10px; border: none; border-radius: 5px;">Delete Product</button>
+                </form>
+            <?php endif; ?>
+            <form action="products.php" method="post">
+                <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>">
+                <button type="submit" name="add_to_cart">Add to Cart</button>
+                <input type="hidden" name="action" value="add_to_cart">
+            </form>
         </div>
-    </main>
-</body>
-</html>
+    <?php endforeach; ?>
+</div>
+
+
+
