@@ -56,8 +56,9 @@ try {
             <ul>
                 <li><a href="home.php">Home</a></li>
                 <li><a href="products.php">Products</a></li>
-                <li><a href="cart.php">Cart</a></li> <!-- Link to Cart page -->
+                
                 <li><a href="contact.php">Contact Us</a></li>
+                <li><a href="orderhistory.php">Order History</a></li> <!-- Link to Order History -->
                 <li><a href="index.php">Logout</a></li> <!-- Logout link -->
             </ul>
         </nav>

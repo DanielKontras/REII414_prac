@@ -1,29 +1,29 @@
 <?php
 session_start();
 
-// Check if the user is logged in
 if (!isset($_SESSION['username'])) {
-    // If not logged in, redirect to the login page
     header("Location: index.php");
     exit();
 }
 
-// Get the username from the session
 $username = $_SESSION['username'];
-
-// Database connection details
 $servername = "localhost";
 $dbname = "takealittle";
 $dbusername = "root";
 $password = "";
 
 try {
-    // Create connection
     $conn = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $password);
-    // Set the PDO error mode to exception
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Fetch products from the database
+
+    // Retrieve user role
+    $stmt = $conn->prepare("SELECT role FROM users WHERE username = :username");
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $role = $user['role'];
+
+    // Retrieve all products
     $stmt = $conn->prepare("SELECT * FROM products");
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -32,81 +32,122 @@ try {
     exit();
 }
 
-// Initialize the cart array
-$cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+$cart = $_SESSION['cart'] ?? [];
+$total_price = 0;
 
-
-// Function to add product to cart and decrement stock quantity
 function addToCart($product_index, $product_stock) {
-    global $conn;
-    if ($product_stock > 1) { // Check if product is in stock
+    global $conn, $cart, $total_price;
+    if ($product_stock >= 1) {
         $stmt = $conn->prepare("UPDATE products SET stock_quantity = stock_quantity - 1 WHERE product_number = ?");
         $stmt->execute([$product_index]);
-        
-        // Store original stock quantity in session if not already stored
-        if (!isset($_SESSION['original_stock'][$product_index])) {
-            $stmt = $conn->prepare("SELECT stock_quantity FROM products WHERE product_number = ?");
-            $stmt->execute([$product_index]);
-            $original_stock = $stmt->fetchColumn();
-            $_SESSION['original_stock'][$product_index] = $original_stock;
-        }
-        
-        $_SESSION['cart'][] = $product_index;
+
+        $_SESSION['cart'][$product_index] = ($_SESSION['cart'][$product_index] ?? 0) + 1;
+        updateTotalPrice();
     } else {
         echo "Product is out of stock.";
     }
 }
 
-
-
-
-// Function to clear cart and restore original stock quantity
 function clearCart() {
     global $conn, $cart;
-    
-    // Restore stock quantity of each product to its original value
-    if(isset($_SESSION['original_stock'])) {
-        foreach ($_SESSION['original_stock'] as $index => $quantity) {
-            $stmt = $conn->prepare("UPDATE products SET stock_quantity = ?+1 WHERE product_number = ?");
-            $stmt->execute([$quantity, $index]);
-        }
+    foreach ($cart as $product_index => $count) {
+        $stmt = $conn->prepare("UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_number = ?");
+        $stmt->execute([$count, $product_index]);
     }
-
-    // Clear the cart and original_stock session variables
-    unset($_SESSION['cart']);
-    unset($_SESSION['original_stock']);
+    $_SESSION['cart'] = [];
+    $_SESSION['total_price'] = 0;
 }
 
-
-
-
-// Check if the form is submitted and perform actions accordingly
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST['action']) && $_POST['action'] == 'add_to_cart') {
-        $product_index = $_POST['product_index'];
-        $product_stock = $_POST['product_stock'];
-        addToCart($product_index, $product_stock); // Pass product stock quantity
-    } elseif (isset($_POST['clear_cart'])) {
-        clearCart();
-    }
-}
-
-// Function to display cart contents and calculate total price
-function displayCart() {
-    global $conn, $cart;
+function updateTotalPrice() {
+    global $conn, $cart, $total_price;
     $total_price = 0;
-    echo "<ul>";
-    foreach ($cart as $index) {
-        $stmt = $conn->prepare("SELECT product_name, product_price FROM products WHERE product_number = ?");
+    foreach ($cart as $index => $count) {
+        $stmt = $conn->prepare("SELECT product_price FROM products WHERE product_number = ?");
         $stmt->execute([$index]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
-        echo "<li>{$product['product_name']} - {$product['product_price']}</li>";
-        $total_price += $product['product_price'];
+        $total_price += $product['product_price'] * $count;
     }
-    echo "</ul>";
-    echo "<p>Total: $total_price</p>";
-    return $total_price; // Return the total price
+    $_SESSION['total_price'] = $total_price;
 }
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (isset($_POST['action']) && $_POST['action'] == 'add_to_cart') {
+        addToCart($_POST['product_index'], $_POST['product_stock']);
+        header("Location: products.php");
+        exit();
+    } elseif (isset($_POST['clear_cart'])) {
+        clearCart();
+        header("Location: products.php");
+        exit();
+    } elseif (isset($_POST['update_stock']) && $role === 'vendor') {
+        $new_stock = intval($_POST['new_stock']);
+        $product_index = intval($_POST['product_index']);
+        $stmt = $conn->prepare("UPDATE products SET stock_quantity = ? WHERE product_number = ?");
+        $stmt->execute([$new_stock, $product_index]);
+        header("Location: products.php");
+        exit();
+    } elseif (isset($_POST['update_price']) && $role === 'administrator') {
+        $new_price = floatval($_POST['new_price']);
+        $product_index = intval($_POST['product_index']);
+        $stmt = $conn->prepare("UPDATE products SET product_price = ? WHERE product_number = ?");
+        $stmt->execute([$new_price, $product_index]);
+        header("Location: products.php");
+        exit();
+    } elseif (isset($_POST['add_vendor']) && $role === 'administrator') {
+        $vendor_name = $_POST['vendor_name'];
+        $vendor_number = intval($_POST['vendor_number']);
+
+        // Check if vendor already exists
+        $stmt = $conn->prepare("SELECT * FROM vendor WHERE vendor_name = :vendor_name OR vendor_number = :vendor_number");
+        $stmt->bindParam(':vendor_name', $vendor_name);
+        $stmt->bindParam(':vendor_number', $vendor_number);
+        $stmt->execute();
+        $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($vendor) {
+            $message = "Vendor already exists.";
+        } else {
+            $stmt = $conn->prepare("INSERT INTO vendor (vendor_name, vendor_number) VALUES (:vendor_name, :vendor_number)");
+            $stmt->bindParam(':vendor_name', $vendor_name);
+            $stmt->bindParam(':vendor_number', $vendor_number);
+            $stmt->execute();
+            $message = "Vendor added successfully!";
+        }
+    } elseif (isset($_POST['remove_vendor']) && $role === 'administrator') {
+        $vendor_name = $_POST['vendor_name'];
+        $vendor_number = intval($_POST['vendor_number']);
+
+        // Check if vendor exists
+        $stmt = $conn->prepare("SELECT * FROM vendor WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
+        $stmt->bindParam(':vendor_name', $vendor_name);
+        $stmt->bindParam(':vendor_number', $vendor_number);
+        $stmt->execute();
+        $vendor = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($vendor) {
+            // Check if the vendor has any products
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM products WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
+            $stmt->bindParam(':vendor_name', $vendor_name);
+            $stmt->bindParam(':vendor_number', $vendor_number);
+            $stmt->execute();
+            $product_count = $stmt->fetchColumn();
+
+            if ($product_count == 0) {
+                $stmt = $conn->prepare("DELETE FROM vendor WHERE vendor_name = :vendor_name AND vendor_number = :vendor_number");
+                $stmt->bindParam(':vendor_name', $vendor_name);
+                $stmt->bindParam(':vendor_number', $vendor_number);
+                $stmt->execute();
+                $message = "Vendor removed successfully!";
+            } else {
+                $message = "Vendor cannot be removed because they have products listed.";
+            }
+        } else {
+            $message = "Vendor does not exist.";
+        }
+    }
+}
+
+updateTotalPrice();
 
 ?>
 
@@ -118,72 +159,93 @@ function displayCart() {
     <title>Products - Online Store</title>
     <link rel="stylesheet" type="text/css" href="style.css">
     <style>
-        /* Add CSS styles for positioning the cart and clear cart button */
         .cart-container {
             float: right;
-            margin-right: 20px; /* Adjust margin as needed */
+            margin-right: 20px;
         }
-                /* Style for the total price */
-                .total-price {
+        .total-price {
             font-weight: bold;
             margin-top: 10px;
+        }
+        .message {
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Browse Products, <?php echo $username; ?></h1>
+        <h1>Browse Products, <?php echo htmlspecialchars($username); ?></h1>
         <nav>
             <ul>
                 <li><a href="home.php">Home</a></li>
                 <li><a href="products.php">Products</a></li>
-                <li><a href="cart.php">Cart</a></li>
+                <li><a href="wallet.php">Wallet</a></li>
                 <li><a href="contact.php">Contact Us</a></li>
+                <li><a href="orderhistory.php">Order History</a></li>
+                <?php if ($role === 'administrator'): ?>
+                    <li><a href="addnewproduct.php">Add New Product</a></li>
+                <?php endif; ?>
                 <li><a href="index.php">Logout</a></li>
             </ul>
         </nav>
     </header>
     <main>
         <h2>Our Products</h2>
+        <?php if (isset($message)): ?>
+            <p class="message"><?php echo $message; ?></p>
+        <?php endif; ?>
         <div class="cart-container">
-            <!-- Display cart contents -->
             <h3>Your Cart</h3>
-            <?php
-                if (!empty($_SESSION['cart'])) {
-                    foreach ($_SESSION['cart'] as $product_index) {
-                        // Fetch product details from the database based on the product index
+            <?php if (!empty($cart)): ?>
+                <ul>
+                    <?php foreach ($cart as $product_index => $count): ?>
+                        <?php
                         $stmt = $conn->prepare("SELECT product_name, product_price FROM products WHERE product_number = ?");
                         $stmt->execute([$product_index]);
                         $product = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                        // Display product name and price
-                        echo "<p>{$product['product_name']} - {$product['product_price']}</p>";
-                    }
-                } else {
-                    echo "<p>Your cart is empty.</p>";
-                }
-            ?>
-             <p class="total-price">Total: <?php echo $total_price; ?></p>
-            <!-- Clear cart button -->
-            <form action="products.php" method="post">
-                <button type="submit" name="clear_cart">Clear Cart</button>
-            </form>
+                        ?>
+                        <li><?php echo htmlspecialchars($product['product_name']); ?> - R<?php echo htmlspecialchars($product['product_price']); ?> x <?php echo $count; ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <p class="total-price">Total: R<?php echo $total_price; ?></p>
+                <form action="products.php" method="post">
+                    <button type="submit" name="clear_cart">Clear Cart</button>
+                </form>
+                <form action="checkout.php" method="post">
+                    <button type="submit">Checkout</button>
+                </form>
+            <?php else: ?>
+                <p>Your cart is empty.</p>
+            <?php endif; ?>
         </div>
         <div>
-            <!-- Display product listings -->
             <?php foreach ($products as $product): ?>
                 <div>
                     <h3><?php echo $product['product_name']; ?></h3>
-                    <img src="<?php echo $product['image_path']; ?>" alt="Product Image" style="max-width: 100px; max-height: 100px;"> <!-- Add image -->
+                    <img src="<?php echo $product['image_path']; ?>" alt="Product Image" style="max-width: 100px; max-height: 100px;">
                     <p>Price: R<?php echo $product['product_price']; ?></p>
                     <p>In stock: <?php echo $product['stock_quantity']; ?></p>
+                    <?php if ($role === 'vendor' && $product['vendor_name'] === $username): ?>
+                        <form action="products.php" method="post">
+                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                            <input type="number" name="new_stock" value="<?php echo $product['stock_quantity']; ?>" min="0">
+                            <button type="submit" name="update_stock">Update Stock</button>
+                        </form>
+                    <?php endif; ?>
+                    <?php if ($role === 'administrator'): ?>
+                        <form action="products.php" method="post">
+                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                            <input type="number" name="new_price" placeholder="New Price" step="0.01" min="0">
+                            <button type="submit" name="update_price">Update Price</button>
+                        </form>
+                    <?php endif; ?>
                     <form action="products.php" method="post">
-    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-    <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>"> <!-- Add this line -->
-    <button type="submit" name="add_to_cart">Add to Cart</button>
-    <input type="hidden" name="action" value="add_to_cart">
-</form>
-
+                        <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                        <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>">
+                        <button type="submit" name="add_to_cart">Add to Cart</button>
+                        <input type="hidden" name="action" value="add_to_cart">
+                    </form>
                 </div>
             <?php endforeach; ?>
         </div>

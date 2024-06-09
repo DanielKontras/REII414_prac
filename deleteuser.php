@@ -1,8 +1,6 @@
 <?php
 session_start();
 
-
-
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -40,23 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->execute();
 
             $_SESSION['message'] = "Your account has been deleted successfully. <a href='index.php'>Return to login page</a>";
+            $_SESSION['message_type'] = "success";
             header("Location: deleteuser.php");
             exit();
         } else {
             $_SESSION['message'] = "Invalid username.";
+            $_SESSION['message_type'] = "error";
             header("Location: deleteuser.php");
             exit();
         }
     } catch(PDOException $e) {
         $_SESSION['message'] = "Error: " . $e->getMessage();
+        $_SESSION['message_type'] = "error";
         header("Location: deleteuser.php");
         exit();
     }
 
     $conn = null;
-} else {
-    echo "Invalid request method";
-}
+} 
 ?>
 
 <!DOCTYPE html>
@@ -66,14 +65,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delete Account - Online Store</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
 </head>
 <body class="login-background">
     <div class="frm">
         <h1>Delete Account</h1>
         <?php
         if (isset($_SESSION['message'])) {
-            echo "<p>" . $_SESSION['message'] . "</p>";
+            $message_type = isset($_SESSION['message_type']) ? $_SESSION['message_type'] : '';
+            echo "<p class='$message_type'>" . $_SESSION['message'] . "</p>";
             unset($_SESSION['message']); // Clear the message after displaying it
+            unset($_SESSION['message_type']); // Clear the message type after displaying it
         }
         ?>
         <form name="deleteForm" action="deleteuser.php" onsubmit="return validateDeleteForm()" method="POST">

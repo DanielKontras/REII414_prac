@@ -11,6 +11,27 @@ if (!isset($_SESSION['username'])) {
 
 // Get the username from the session variable
 $username = $_SESSION['username'];
+
+// Database connection parameters
+$servername = "localhost";
+$dbname = "takealittle";
+$dbusername = "root";
+$password = "";
+
+try {
+    $conn = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $password);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    // Retrieve user role
+    $stmt = $conn->prepare("SELECT role FROM users WHERE username = :username");
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $role = $user['role'];
+} catch(PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -28,9 +49,13 @@ $username = $_SESSION['username'];
             <ul>
                 <li><a href="home.php">Home</a></li>
                 <li><a href="products.php">Products</a></li>
-                <li><a href="cart.php">Cart</a></li> <!-- Link to Cart page -->
                 <li><a href="wallet.php">Wallet</a></li>
                 <li><a href="contact.php">Contact Us</a></li>
+                <li><a href="orderhistory.php">Order History</a></li> <!-- Link to Order History -->
+                <?php if ($role === 'administrator'): ?>
+                    <li><a href="addnewvendor.php">Add New Vendor</a></li>
+                    <li><a href="removevendor.php">Remove Vendor</a></li>
+                <?php endif; ?>
                 <li><a href="index.php">Logout</a></li> <!-- Logout link -->
             </ul>
         </nav>
