@@ -114,6 +114,7 @@ try {
                 <?php if ($role === 'administrator'): ?>
                     <li><a href="addnewvendor.php">Add New Vendor</a></li>
                     <li><a href="removevendor.php">Remove Vendor</a></li>
+                   
                 <?php endif; ?>
                 <li><a href="index.php">Logout</a></li> <!-- Logout link -->
             </ul>

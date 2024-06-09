@@ -13,9 +13,9 @@ $username = $_SESSION['username'];
 
 // Database connection
 $servername = "localhost";
-$dbname = "takealittle";  // Replace with your actual database name
-$dbusername = "root";     // Typically 'root' for XAMPP
-$password = "";           // Default is no password in XAMPP
+$dbname = "takealittle";
+$dbusername = "root";
+$password = "";
 
 try {
     $conn = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $password);
@@ -34,6 +34,30 @@ try {
     } else {
         // Handle case where no balance is found
         $balance = 0; // Set default balance to 0
+    }
+
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        if (isset($_POST['deposit'])) {
+            $deposit_amount = $_POST['amount'];
+            $new_balance = $balance + $deposit_amount;
+            $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num = (SELECT user_num FROM users WHERE username = :username)");
+            $stmt->bindParam(':new_balance', $new_balance);
+            $stmt->bindParam(':username', $username);
+            $stmt->execute();
+            $balance = $new_balance;
+        } elseif (isset($_POST['withdraw'])) {
+            $withdraw_amount = $_POST['withdraw_amount'];
+            if ($withdraw_amount > $balance) {
+                echo "<script>alert('Withdrawal amount exceeds your current balance.');</script>";
+            } else {
+                $new_balance = $balance - $withdraw_amount;
+                $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num = (SELECT user_num FROM users WHERE username = :username)");
+                $stmt->bindParam(':new_balance', $new_balance);
+                $stmt->bindParam(':username', $username);
+                $stmt->execute();
+                $balance = $new_balance;
+            }
+        }
     }
 } catch(PDOException $e) {
     echo "Error: " . $e->getMessage();
@@ -101,18 +125,15 @@ try {
         label {
             font-weight: bold;
         }
-        input[type="number"] {
+        input[type="number"], input[type="submit"] {
             padding: 8px;
             margin: 8px;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
         input[type="submit"] {
-            padding: 10px 20px;
             background-color: #3CAF50;
             color: white;
-            border: none;
-            border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.2s;
         }
@@ -137,11 +158,16 @@ try {
     </header>
 
     <main>
-        <h2>Your Current Balance: R <?php echo $balance; ?></h2>
-        <form action="deposit_action.php" method="post">
+        <h2>Your Current Balance: R<?php echo $balance; ?></h2>
+        <form action="" method="post">
             <label for="amount">Enter Amount to Deposit:</label>
             <input type="number" id="amount" name="amount" min="0" step="any">
-            <input type="submit" value="Deposit">
+            <input type="submit" name="deposit" value="Deposit">
+        </form>
+        <form action="" method="post">
+            <label for="withdraw_amount">Enter Amount to Withdraw:</label>
+            <input type="number" id="withdraw_amount" name="withdraw_amount" min="0" step="any">
+            <input type="submit" name="withdraw" value="Withdraw">
         </form>
     </main>
 

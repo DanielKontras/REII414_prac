@@ -23,8 +23,14 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     $role = $user['role'];
 
-    // Retrieve all products
-    $stmt = $conn->prepare("SELECT * FROM products");
+    // Retrieve products based on search query
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+    if ($search) {
+        $stmt = $conn->prepare("SELECT * FROM products WHERE product_name LIKE :search");
+        $stmt->bindValue(':search', '%' . $search . '%');
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM products");
+    }
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
@@ -81,7 +87,7 @@ function deleteProduct($product_index) {
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['action']) && $_POST['action'] == 'add_to_cart') {
         addToCart($_POST['product_index'], $_POST['product_stock']);
-        header("Location: products.php");
+        header("Location: products.php?search=" . urlencode($search));
         exit();
     } elseif (isset($_POST['clear_cart'])) {
         clearCart();
@@ -92,14 +98,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $product_index = intval($_POST['product_index']);
         $stmt = $conn->prepare("UPDATE products SET stock_quantity = ? WHERE product_number = ?");
         $stmt->execute([$new_stock, $product_index]);
-        header("Location: products.php");
+        header("Location: products.php?search=" . urlencode($search));
         exit();
     } elseif (isset($_POST['update_price']) && $role === 'administrator') {
         $new_price = floatval($_POST['new_price']);
         $product_index = intval($_POST['product_index']);
         $stmt = $conn->prepare("UPDATE products SET product_price = ? WHERE product_number = ?");
         $stmt->execute([$new_price, $product_index]);
-        header("Location: products.php");
+        header("Location: products.php?search=" . urlencode($search));
         exit();
     } elseif (isset($_POST['add_vendor']) && $role === 'administrator') {
         $vendor_name = $_POST['vendor_name'];
@@ -124,15 +130,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (isset($_POST['remove_product']) && $role === 'administrator') {
         $product_index = intval($_POST['product_index']);
         deleteProduct($product_index);
-        header("Location: products.php");
+        header("Location: products.php?search=" . urlencode($search));
         exit();
     }
 }
 
 updateTotalPrice();
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -237,6 +241,22 @@ updateTotalPrice();
         button:hover {
             background-color: #37CEEB; /* Darker green */
         }
+
+        .search-bar-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .search-bar-container input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+            outline: none;
+        }
+        .search-bar-container button {
+            border-radius: 0 5px 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -261,6 +281,12 @@ updateTotalPrice();
         <?php if (isset($message)): ?>
             <p class="message"><?php echo $message; ?></p>
         <?php endif; ?>
+        <div class="search-bar-container">
+            <form method="get" action="products.php">
+                <input type="text" name="search" placeholder="Search for products" value="<?php echo htmlspecialchars($search); ?>">
+                <button type="submit">Search</button>
+            </form>
+        </div>
         <div class="cart-container">
             <h3>Your Cart</h3>
             <?php if (!empty($cart)): ?>
@@ -286,41 +312,43 @@ updateTotalPrice();
             <?php endif; ?>
         </div>
         <div class="products-container">
-    <?php foreach ($products as $product): ?>
-        <div class="product">
-            <h3><?php echo $product['product_name']; ?></h3>
-            <img src="<?php echo $product['image_path']; ?>" alt="Product Image">
-            <p>Price: R<?php echo $product['product_price']; ?></p>
-            <p>In stock: <?php echo $product['stock_quantity']; ?></p>
-            <?php if ($role === 'vendor' && $product['vendor_name'] === $username): ?>
-                <form action="products.php" method="post">
-                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                    <input type="number" name="new_stock" value="<?php echo $product['stock_quantity']; ?>" min="0">
-                    <button type="submit" name="update_stock">Update Stock</button>
-                </form>
-            <?php endif; ?>
-            <?php if ($role === 'administrator'): ?>
-                <form action="products.php" method="post">
-                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                    <input type="number" name="new_price" 
-                    placeholder="New Price" step="0.01" min="0">
-                    <button type="submit" name="update_price">Update Price</button>
-                </form>
-                <!-- Form for deleting a product -->
-                <form action="products.php" method="post">
-                    <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                    <button type="submit" name="remove_product" style="background-color: #f44336; color: white; padding: 10px; border: none; border-radius: 5px;">Delete Product</button>
-                </form>
-            <?php endif; ?>
-            <form action="products.php" method="post">
-                <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
-                <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>">
-                <button type="submit" name="add_to_cart">Add to Cart</button>
-                <input type="hidden" name="action" value="add_to_cart">
-            </form>
+            <?php foreach ($products as $product): ?>
+                <div class="product">
+                    <h3><?php echo $product['product_name']; ?></h3>
+                    <img src="<?php echo $product['image_path']; ?>" alt="Product Image">
+                    <p>Price: R<?php echo $product['product_price']; ?></p>
+                    <p>In stock: <?php echo $product['stock_quantity']; ?></p>
+                    <?php if ($role === 'vendor' && $product['vendor_name'] === $username): ?>
+                        <form action="products.php?search=<?php echo urlencode($search); ?>" method="post">
+                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                            <input type="number" name="new_stock" value="<?php echo $product['stock_quantity']; ?>" min="0">
+                            <button type="submit" name="update_stock">Update Stock</button>
+                        </form>
+                    <?php endif; ?>
+                    <?php if ($role === 'administrator'): ?>
+                        <form action="products.php?search=<?php echo urlencode($search); ?>" method="post">
+                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                            <input type="number" name="new_price" 
+                            placeholder="New Price" step="0.01" min="0">
+                            <button type="submit" name="update_price">Update Price</button>
+                        </form>
+                        <!-- Form for deleting a product -->
+                        <form action="products.php?search=<?php echo urlencode($search); ?>" method="post">
+                            <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                            <button type="submit" name="remove_product" style="background-color: #f44336; color: white; padding: 10px; border: none; border-radius: 5px;">Delete Product</button>
+                        </form>
+                    <?php endif; ?>
+                    <form action="products.php?search=<?php echo urlencode($search); ?>" method="post">
+                        <input type="hidden" name="product_index" value="<?php echo $product['product_number']; ?>">
+                        <input type="hidden" name="product_stock" value="<?php echo $product['stock_quantity']; ?>">
+                        <button type="submit" name="add_to_cart">Add to Cart</button>
+                        <input type="hidden" name="action" value="add_to_cart">
+                    </form>
+                </div>
+            <?php endforeach; ?>
         </div>
-    <?php endforeach; ?>
-</div>
-
+    </main>
+</body>
+</html>
 
 
