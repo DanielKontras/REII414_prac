@@ -125,7 +125,8 @@ try {
                 <div>
                     <p>Total Price: R<?php echo $order['total_price']; ?></p>
                     <p>Shipping Fee: R<?php echo $order['shipping_fee']; ?></p>
-                    <p>Total with Shipping: R<?php echo $order['total_price'] + $order['shipping_fee']; ?></p>
+                    <p>Tax Fee: R<?php echo $order['tax_fee']; ?></p>
+                    <p>Total with Shipping and Tax: R<?php echo $order['total_price'] + $order['shipping_fee'] + $order['tax_fee']; ?></p>
                 </div>
                 <h3>Items:</h3>
                 <ul>

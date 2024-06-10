@@ -36,14 +36,41 @@ try {
         $balance = 0; // Set default balance to 0
     }
 
+    // Retrieve user's role
+    $stmt = $conn->prepare("SELECT role FROM users WHERE username = :username");
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $user_role = $user['role'];
+
+    // Ensure all admins have the same balance
+    $stmt = $conn->prepare("SELECT balance FROM wallets WHERE user_num = (SELECT user_num FROM users WHERE role = 'administrator' LIMIT 1)");
+    $stmt->execute();
+    $admin_balance_result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $admin_balance = $admin_balance_result['balance'];
+
+    $stmt = $conn->prepare("UPDATE wallets SET balance = :admin_balance WHERE user_num IN (SELECT user_num FROM users WHERE role = 'administrator')");
+    $stmt->bindParam(':admin_balance', $admin_balance);
+    $stmt->execute();
+
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        if (isset($_POST['deposit'])) {
+        if (isset($_POST['deposit']) && $user_role !== 'vendor') {
             $deposit_amount = $_POST['amount'];
             $new_balance = $balance + $deposit_amount;
+
+            // Update balance for the current user
             $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num = (SELECT user_num FROM users WHERE username = :username)");
             $stmt->bindParam(':new_balance', $new_balance);
             $stmt->bindParam(':username', $username);
             $stmt->execute();
+
+            // If the user is an admin, update balance for all admins
+            if ($user_role === 'administrator') {
+                $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num IN (SELECT user_num FROM users WHERE role = 'administrator')");
+                $stmt->bindParam(':new_balance', $new_balance);
+                $stmt->execute();
+            }
+
             $balance = $new_balance;
         } elseif (isset($_POST['withdraw'])) {
             $withdraw_amount = $_POST['withdraw_amount'];
@@ -51,10 +78,20 @@ try {
                 echo "<script>alert('Withdrawal amount exceeds your current balance.');</script>";
             } else {
                 $new_balance = $balance - $withdraw_amount;
+
+                // Update balance for the current user
                 $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num = (SELECT user_num FROM users WHERE username = :username)");
                 $stmt->bindParam(':new_balance', $new_balance);
                 $stmt->bindParam(':username', $username);
                 $stmt->execute();
+
+                // If the user is an admin, update balance for all admins
+                if ($user_role === 'administrator') {
+                    $stmt = $conn->prepare("UPDATE wallets SET balance = :new_balance WHERE user_num IN (SELECT user_num FROM users WHERE role = 'administrator')");
+                    $stmt->bindParam(':new_balance', $new_balance);
+                    $stmt->execute();
+                }
+
                 $balance = $new_balance;
             }
         }
@@ -159,11 +196,15 @@ try {
 
     <main>
         <h2>Your Current Balance: R<?php echo $balance; ?></h2>
+        <?php if ($user_role !== 'vendor'): ?>
         <form action="" method="post">
             <label for="amount">Enter Amount to Deposit:</label>
             <input type="number" id="amount" name="amount" min="0" step="any">
             <input type="submit" name="deposit" value="Deposit">
         </form>
+        <?php else: ?>
+            <p style="color: red;">You can't deposit, you are a vendor.</p>
+        <?php endif; ?>
         <form action="" method="post">
             <label for="withdraw_amount">Enter Amount to Withdraw:</label>
             <input type="number" id="withdraw_amount" name="withdraw_amount" min="0" step="any">
