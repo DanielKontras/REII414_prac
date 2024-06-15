@@ -210,12 +210,14 @@ try {
         <?php if ($message): ?>
             <p class="message" style="color: <?php echo strpos($message, 'Payment successful') !== false ? 'green' : 'red'; ?>;"><?php echo $message; ?></p>
         <?php endif; ?>
-        <?php if ($user_role !== 'vendor'): ?>
+        <?php if ($user_role !== 'vendor' && $user_role !== 'administrator'): ?>
             <form method="post" action="checkout.php">
                 <button type="submit" name="pay">Pay Amount</button>
             </form>
-        <?php else: ?>
+        <?php elseif ($user_role === 'vendor'): ?>
             <p style="color: red;">You are a vendor. To buy, you need to be a customer or create a customer account.</p>
+        <?php elseif ($user_role === 'administrator'): ?>
+            <p style="color: red;">You are an administrator. To buy, you need to be a customer or create a customer account.</p>
         <?php endif; ?>
         <p><button type="button" onclick="location.href='products.php'">Back to Products</button></p>
     </main>

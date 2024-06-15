@@ -3,9 +3,9 @@ session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $servername = "localhost";
-    $dbname = "takealittle";  // Replace with your actual database name
-    $dbusername = "root";     // Typically 'root' for XAMPP
-    $password = "";           // Default is no password in XAMPP
+    $dbname = "takealittle";  
+    $dbusername = "root";     
+    $password = "";           
 
     try {
         $conn = new PDO("mysql:host=$servername;dbname=$dbname", $dbusername, $password);

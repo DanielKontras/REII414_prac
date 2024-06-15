@@ -81,7 +81,7 @@ function deleteProduct($product_index) {
     global $conn;
     $stmt = $conn->prepare("DELETE FROM products WHERE product_number = ?");
     $stmt->execute([$product_index]);
-    // You may also want to remove the product from any other related tables
+    
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

@@ -40,7 +40,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home - Online Store</title>
-    <link rel="stylesheet" type="text/css" href="style.css"> <!-- Include your CSS file here -->
+    <link rel="stylesheet" type="text/css" href="style.css"> <!-- Include CSS file here -->
     <style>
         body {
             display: flex;
